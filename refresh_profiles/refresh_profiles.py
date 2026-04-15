@@ -277,6 +277,8 @@ async def wait_for_collect_stories(frame, timeout=20000):
             return btn.first
         await asyncio.sleep(0.5)
 
+    await asyncio.sleep(90)
+
     return None
 
 
