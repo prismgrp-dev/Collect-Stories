@@ -1,0 +1,5 @@
+seatable_api==3.0.0
+playwright
+dotenv
+numpy
+pandas
