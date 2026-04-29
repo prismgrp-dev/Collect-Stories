@@ -1,3 +1,8 @@
+function randomSleep(minMs, maxMs) {
+  var ms = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
 var _appIframe;
 
 function getAppIframe() {
@@ -75,6 +80,9 @@ function onCollectStories(event) {
   };
 
   fetchInstaUserId(userName)
+    .then(function (igUserId) {
+      return randomSleep(800, 2300).then(function () { return igUserId; });
+    })
     .then(function (igUserId) {
       fetchStories(igUserId)
         .then(function (data) {

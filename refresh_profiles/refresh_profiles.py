@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -44,12 +45,25 @@ EXTENSION_PATH = os.path.abspath(
     os.path.join(os.getcwd(), "refresh_profiles", "extension")
 )
 
-CONCURRENCY_LIMIT = 3
+CONCURRENCY_LIMIT = 1
 
 
 # =========================
 # Helpers UI
 # =========================
+async def human_sleep(min_s: float, max_s: float):
+    await asyncio.sleep(random.uniform(min_s, max_s))
+
+
+async def human_type(locator, text: str):
+    await locator.click()
+    await locator.fill("")
+    for char in text:
+        await locator.type(char, delay=random.randint(60, 180))
+        if random.random() < 0.05:
+            await asyncio.sleep(random.uniform(0.1, 0.4))
+
+
 async def is_visible(locator, timeout=1500):
     try:
         await locator.first.wait_for(state="visible", timeout=timeout)
@@ -108,7 +122,7 @@ async def accept_instagram_cookies(page):
         try:
             if await click_first_visible_button(page, [cookie_text], timeout=2500):
                 logger.info(f"Cookie popup aceptado: {cookie_text}")
-                await asyncio.sleep(1)
+                await human_sleep(0.8, 2.2)
                 return
         except Exception:
             pass
@@ -127,7 +141,7 @@ async def dismiss_instagram_popups(page):
     for text in popup_texts:
         try:
             if await click_first_visible(page, [text], timeout=2000):
-                await asyncio.sleep(1)
+                await human_sleep(0.7, 1.8)
         except Exception:
             pass
 
@@ -164,7 +178,7 @@ async def get_lefty_frame(page, timeout=15000):
         if wrapper_frame:
             logger.info(f"Solo se ve wrapper frame por ahora: {wrapper_frame.url}")
 
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(random.uniform(0.15, 0.45))
 
     raise RuntimeError("No se encontró el iframe real de Lefty (https://plugin.lefty.io).")
 
@@ -204,14 +218,14 @@ async def open_lefty_panel(page):
         try:
             await open_btn.wait_for(state="attached", timeout=4000)
             await open_btn.scroll_into_view_if_needed()
-            logger.info("Esperando 2 segundos antes de hacer clic para abrir el panel...")
-            await asyncio.sleep(2)
+            logger.info("Esperando antes de hacer clic para abrir el panel...")
+            await human_sleep(1.5, 3.5)
             await open_btn.click(force=True)
             logger.info("Se hizo clic en el botón para abrir Lefty.")
         except Exception as e:
             logger.debug(f"Botón no encontrado o error en clic: {e}")
 
-        await asyncio.sleep(2)
+        await human_sleep(1.5, 3.5)
 
     return frame
 
@@ -250,19 +264,16 @@ async def login_lefty_if_needed(page):
     await email_input.wait_for(state="visible", timeout=10000)
     await password_input.wait_for(state="visible", timeout=10000)
 
-    await email_input.click()
-    await email_input.fill("")
-    await email_input.fill(LEFTY_EMAIL)
-
-    await password_input.click()
-    await password_input.fill("")
-    await password_input.fill(LEFTY_PASSWORD)
+    await human_type(email_input, LEFTY_EMAIL)
+    await human_sleep(0.5, 1.2)
+    await human_type(password_input, LEFTY_PASSWORD)
 
     await sign_in_btn.wait_for(state="visible", timeout=5000)
+    await human_sleep(0.4, 1.0)
     await sign_in_btn.click()
 
     logger.info("Login de Lefty enviado.")
-    await asyncio.sleep(2)
+    await human_sleep(1.5, 3.5)
 
     return frame
 
@@ -275,7 +286,7 @@ async def wait_for_collect_stories(frame, timeout=20000):
         btn = frame.get_by_text("Collect stories", exact=True)
         if await is_visible(btn, timeout=500):
             return btn.first
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(random.uniform(0.3, 0.8))
 
     await asyncio.sleep(90)
 
@@ -291,14 +302,14 @@ async def wait_and_click_ok(page, timeout=15000):
             try:
                 ok_btn = target.get_by_role("button", name="OK")
                 if await is_visible(ok_btn, timeout=400):
-                    logger.info("Popup OK detectado, esperando 2 segundos antes del clic...")
-                    await asyncio.sleep(2)
+                    logger.info("Popup OK detectado, esperando antes del clic...")
+                    await human_sleep(1.5, 3.0)
                     await ok_btn.first.click()
                     return True
             except Exception:
                 pass
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(random.uniform(0.3, 0.8))
 
     return False
 
@@ -378,7 +389,7 @@ async def open_instagram_login_page(page):
         wait_until="domcontentloaded",
         timeout=90000
     )
-    await asyncio.sleep(2)
+    await human_sleep(1.5, 3.5)
     await accept_instagram_cookies(page)
     await wait_network_idle_safe(page, timeout=10000)
     return await log_instagram_state(page, prefix="Estado al abrir login page")
@@ -401,7 +412,7 @@ async def force_login_form(page):
                 timeout=3000
             )
 
-        await asyncio.sleep(2)
+        await human_sleep(1.5, 3.5)
         state = await log_instagram_state(page, prefix="Estado después de 'Usar otro perfil'")
 
     if state != "login_form":
@@ -443,18 +454,15 @@ async def do_instagram_login_form(page):
     await username_input.wait_for(state="visible", timeout=30000)
     await password_input.wait_for(state="visible", timeout=30000)
 
-    await username_input.click()
-    await username_input.fill("")
-    await username_input.fill(EMAIL_INSTAGRAM)
-
-    await password_input.click()
-    await password_input.fill("")
-    await password_input.fill(PASSWORD_INSTAGRAM)
+    await human_type(username_input, EMAIL_INSTAGRAM)
+    await human_sleep(0.6, 1.5)
+    await human_type(password_input, PASSWORD_INSTAGRAM)
 
     logger.info("Credenciales escritas en el formulario de Instagram.")
 
     try:
         await submit_button.wait_for(state="visible", timeout=5000)
+        await human_sleep(0.4, 1.0)
         await submit_button.click()
         logger.info("Click realizado en el botón de login.")
     except Exception:
@@ -462,7 +470,7 @@ async def do_instagram_login_form(page):
         await password_input.press("Enter")
 
     await wait_network_idle_safe(page, timeout=30000)
-    await asyncio.sleep(5)
+    await human_sleep(4.0, 7.5)
 
     await dismiss_instagram_popups(page)
 
@@ -487,7 +495,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
         clicked_continue = await click_first_visible_button(
             page, ["Continuar", "Continue"], timeout=3000
         )
-        await asyncio.sleep(5)
+        await human_sleep(4.0, 7.0)
         await wait_network_idle_safe(page, timeout=5000)
 
         state = await log_instagram_state(page, prefix="Estado después de intentar 'Continuar'")
@@ -496,7 +504,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
             if profile_url:
                 await page.goto(profile_url, wait_until="domcontentloaded", timeout=50000)
                 await wait_network_idle_safe(page, timeout=5000)
-                await asyncio.sleep(1)
+                await human_sleep(0.8, 2.0)
                 await log_instagram_state(page, prefix="Estado después de volver al perfil")
             return True
 
@@ -506,7 +514,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
         if profile_url:
             await page.goto(profile_url, wait_until="domcontentloaded", timeout=50000)
             await wait_network_idle_safe(page, timeout=5000)
-            await asyncio.sleep(1)
+            await human_sleep(0.8, 2.0)
 
         final_state = await log_instagram_state(page, prefix="Estado final luego de login desde chooser")
         return final_state == "logged_in"
@@ -519,7 +527,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
         if not clicked_login:
             await force_login_form(page)
         else:
-            await asyncio.sleep(2)
+            await human_sleep(1.5, 3.5)
             state = await log_instagram_state(page, prefix="Estado después de click en 'Iniciar sesión'")
             if state != "login_form":
                 await force_login_form(page)
@@ -529,7 +537,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
         if profile_url:
             await page.goto(profile_url, wait_until="domcontentloaded", timeout=50000)
             await wait_network_idle_safe(page, timeout=5000)
-            await asyncio.sleep(1)
+            await human_sleep(0.8, 2.0)
 
         final_state = await log_instagram_state(page, prefix="Estado final luego de guest_modal")
         return final_state == "logged_in"
@@ -541,7 +549,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
         if profile_url:
             await page.goto(profile_url, wait_until="domcontentloaded", timeout=50000)
             await wait_network_idle_safe(page, timeout=5000)
-            await asyncio.sleep(1)
+            await human_sleep(0.8, 2.0)
 
         final_state = await log_instagram_state(page, prefix="Estado final luego de login_form")
         return final_state == "logged_in"
@@ -553,7 +561,7 @@ async def ensure_instagram_authenticated(page, profile_url=None):
     if profile_url:
         await page.goto(profile_url, wait_until="domcontentloaded", timeout=50000)
         await wait_network_idle_safe(page, timeout=5000)
-        await asyncio.sleep(1)
+        await human_sleep(0.8, 2.0)
 
     final_state = await log_instagram_state(page, prefix="Estado final luego de unknown")
     return final_state == "logged_in"
@@ -590,7 +598,7 @@ async def process_influencer(influencer, context, semaphore, platforms_to_visit)
                     logger.info(f"Visiting {platform} link for {name}: {url}")
                     await page.goto(url, wait_until="domcontentloaded", timeout=50000)
                     await wait_network_idle_safe(page, timeout=5000)
-                    await asyncio.sleep(1)
+                    await human_sleep(0.8, 2.5)
 
                     if platform.lower() == "instagram":
                         authenticated = await ensure_instagram_authenticated(page, profile_url=url)
@@ -605,8 +613,15 @@ async def process_influencer(influencer, context, semaphore, platforms_to_visit)
                         collect_btn = await wait_for_collect_stories(lefty_frame, timeout=5000)
 
                         if collect_btn:
-                            logger.info("Botón 'Collect stories' detectado, esperando 2 segundos antes del clic...")
-                            await asyncio.sleep(2)
+                            logger.info("Botón 'Collect stories' detectado, simulando actividad antes del clic...")
+                            await page.mouse.wheel(0, random.randint(80, 350))
+                            await human_sleep(0.4, 1.0)
+                            await page.mouse.move(
+                                random.randint(350, 650),
+                                random.randint(250, 550),
+                                steps=random.randint(5, 15),
+                            )
+                            await human_sleep(1.0, 2.5)
                             await collect_btn.click()
                             logger.info(f"Clicked 'Collect stories' for {name}")
 
@@ -629,6 +644,10 @@ async def process_influencer(influencer, context, semaphore, platforms_to_visit)
                     error_msg = f"{platform}: {str(e)}"
                     logger.error(error_msg)
                     errors.append(error_msg)
+
+            cooldown = random.uniform(8.0, 25.0)
+            logger.info(f"Inter-account cooldown: {cooldown:.1f}s")
+            await asyncio.sleep(cooldown)
 
             status = "Success" if not errors else f"Errors: {', '.join(errors)}"
             return {
@@ -699,7 +718,7 @@ async def main(platforms_to_visit):
                 timeout=50000
             )
             await wait_network_idle_safe(bootstrap_page, timeout=5000)
-            await asyncio.sleep(1)
+            await human_sleep(0.8, 2.5)
 
             authenticated = await ensure_instagram_authenticated(
                 bootstrap_page,
@@ -719,7 +738,14 @@ async def main(platforms_to_visit):
                 for influencer in influencers
             ]
 
-            results = await asyncio.gather(*tasks)
+            results = []
+            for i, task in enumerate(tasks):
+                result = await task
+                results.append(result)
+                if (i + 1) % 10 == 0 and (i + 1) < len(tasks):
+                    pause = random.uniform(60, 180)
+                    logger.info(f"Session pause after {i + 1} accounts: {pause:.0f}s")
+                    await asyncio.sleep(pause)
 
         finally:
             try:
